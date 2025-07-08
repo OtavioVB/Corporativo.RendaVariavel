@@ -66,12 +66,14 @@ public class RetriableProducer<T> : IRetriableProducer<T>, IProducer<T>
                     {
                         _logger?.LogWarning(
                             exception: exception,
-                            "[{Type}][{Method}] Try {Retry} has been failed. Resending by {Delay}ms. RetriableConfiguration = {@RetriableConfiguration}",
+                            "[{Type}][{Method}] Try {Retry} has been failed. Resending by {Delay}ms. RetriableConfiguration = {@RetriableConfiguration}; TopicName = {TopicName} Key = {Key};",
                             nameof(RetriableProducer<T>),
                             nameof(ProduceRetriableAsync),
                             retryCount,
                             delay,
-                            retriableConfiguration);
+                            retriableConfiguration,
+                            _configuration.TopicName,
+                            key);
                     });
 
             await retryPolicy.ExecuteAsync(async () =>
