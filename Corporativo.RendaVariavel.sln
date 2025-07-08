@@ -28,6 +28,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corporativo.RendaVariavel.I
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corporativo.RendaVariavel.FunctionalTests", "tsts\Corporativo.RendaVariavel.FunctionalTests\Corporativo.RendaVariavel.FunctionalTests.csproj", "{699F5B31-A9F9-402F-AF7E-56CEDE7201B1}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchs", "benchs", "{60B2DD09-45A8-4588-AD29-4B036B7B2B04}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProducerSerializator", "benchs\ProducerSerializator\ProducerSerializator.csproj", "{068F4F75-0A07-454F-90F3-A84C912AA8DB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,6 +66,10 @@ Global
 		{699F5B31-A9F9-402F-AF7E-56CEDE7201B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{699F5B31-A9F9-402F-AF7E-56CEDE7201B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{699F5B31-A9F9-402F-AF7E-56CEDE7201B1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{068F4F75-0A07-454F-90F3-A84C912AA8DB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{068F4F75-0A07-454F-90F3-A84C912AA8DB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{068F4F75-0A07-454F-90F3-A84C912AA8DB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{068F4F75-0A07-454F-90F3-A84C912AA8DB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -74,5 +82,6 @@ Global
 		{560ECED0-1627-417A-B9EC-C03521CDAADB} = {02DC9E0C-1499-42FE-9EE4-E219130B378C}
 		{E6DB62DC-9227-4236-9B18-1240985E6ECE} = {02DC9E0C-1499-42FE-9EE4-E219130B378C}
 		{699F5B31-A9F9-402F-AF7E-56CEDE7201B1} = {02DC9E0C-1499-42FE-9EE4-E219130B378C}
+		{068F4F75-0A07-454F-90F3-A84C912AA8DB} = {60B2DD09-45A8-4588-AD29-4B036B7B2B04}
 	EndGlobalSection
 EndGlobal
