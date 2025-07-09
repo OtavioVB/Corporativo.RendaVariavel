@@ -3,26 +3,24 @@ using Microsoft.Extensions.Logging;
 using Polly;
 using Polly.Retry;
 using Polly.Timeout;
-using System;
 using System.Text.Json;
-using System.Threading.Tasks;
 
-namespace Corporativo.RendaVariavel.Infrascructure.ApacheKafka.Producers;
+namespace Corporativo.RendaVariavel.Infrascructure.Mensageria.Produtores;
 
-public class RetriableProducer<T> : IRetriableProducer<T>, IProducer<T>
+public class ProdutorResiliente<T> : IRetentativaProdutor<T>, IProdutor<T>
 {
-    protected readonly ILogger<RetriableProducer<T>> _logger;
+    protected readonly ILogger<ProdutorResiliente<T>> _logger;
     protected readonly IProducer<string, string> _producer;
-    protected readonly ProducerConfiguration _configuration;
+    protected readonly ProdutorDeMensagemConfiguracao _configuration;
 
-    public RetriableProducer(ILogger<RetriableProducer<T>> logger, IProducer<string, string> producer, ProducerConfiguration configuration)
+    public ProdutorResiliente(ILogger<ProdutorResiliente<T>> logger, IProducer<string, string> producer, ProdutorDeMensagemConfiguracao configuration)
     {
         _logger = logger;
         _producer = producer;
         _configuration = configuration;
     }
 
-    public async Task ProduceAsync(string key, T message, CancellationToken cancellationToken = default)
+    public async Task ProduzirMensagemAssincrona(string key, T message, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -35,7 +33,7 @@ public class RetriableProducer<T> : IRetriableProducer<T>, IProducer<T>
             };
 
             var result = await _producer.ProduceAsync(
-                topic: _configuration.TopicName,
+                topic: _configuration.NomeDoTopico,
                 message: @event,
                 cancellationToken: cancellationToken);
         }
@@ -44,8 +42,8 @@ public class RetriableProducer<T> : IRetriableProducer<T>, IProducer<T>
             _logger?.LogError(
                 exception: ex,
                 message: "[{Type}][{Method}] An unhandled exception has been throwed producing apache kafka message. Info = {@Info}",
-                nameof(RetriableProducer<T>),
-                nameof(ProduceAsync),
+                nameof(ProdutorResiliente<T>),
+                nameof(ProduzirMensagemAssincrona),
                 new
                 {
                     Key = key,
@@ -53,45 +51,45 @@ public class RetriableProducer<T> : IRetriableProducer<T>, IProducer<T>
         }
     }
 
-    public async Task ProduceRetriableAsync(string key, T message, CancellationToken cancellationToken = default)
+    public async Task ProduzirMensagemComRetentativaAssincrona(string key, T message, CancellationToken cancellationToken = default)
     {
-        var retriableConfiguration = _configuration.Retriable;
+        var retriableConfiguration = _configuration.Retentativa;
 
-        var timeoutConfiguration = _configuration.Timeout;
+        var timeoutConfiguration = _configuration.TempoEsgotado;
 
         try
         {
             AsyncRetryPolicy retryPolicy = Policy
                 .Handle<Exception>()
                 .WaitAndRetryAsync(
-                    retryCount: retriableConfiguration.RetryCount,
-                    sleepDurationProvider: _ => TimeSpan.FromMilliseconds(retriableConfiguration.DelayInMiliseconds),
+                    retryCount: retriableConfiguration.NumeroDeRetentativas,
+                    sleepDurationProvider: _ => TimeSpan.FromMilliseconds(retriableConfiguration.IntervaloEmMilisegundos),
                     onRetry: (exception, delay, retryCount, context) =>
                     {
                         _logger?.LogWarning(
                             exception: exception,
                             "[{Type}][{Method}] Try {Retry} has been failed. Resending by {Delay}ms. RetriableConfiguration = {@RetriableConfiguration}; TopicName = {TopicName} Key = {Key};",
-                            nameof(RetriableProducer<T>),
-                            nameof(ProduceRetriableAsync),
+                            nameof(ProdutorResiliente<T>),
+                            nameof(ProduzirMensagemComRetentativaAssincrona),
                             retryCount,
                             delay,
                             retriableConfiguration,
-                            _configuration.TopicName,
+                            _configuration.NomeDoTopico,
                             key);
                     });
 
             AsyncTimeoutPolicy timeoutPolicy =
                 Policy.TimeoutAsync(
-                    seconds: timeoutConfiguration.Seconds,
+                    seconds: timeoutConfiguration.Segundos,
                     timeoutStrategy: TimeoutStrategy.Optimistic,
                     onTimeoutAsync: (context, timespan, task, ex) =>
                     {
                         _logger?.LogError(
                             "[{Type}][{Method}] Timeout after {Timeout}ms. Topic = {Topic}; Key = {Key}",
-                            nameof(RetriableProducer<T>),
-                            nameof(ProduceRetriableAsync),
+                            nameof(ProdutorResiliente<T>),
+                            nameof(ProduzirMensagemComRetentativaAssincrona),
                             timespan.TotalMilliseconds,
-                            _configuration.TopicName,
+                            _configuration.NomeDoTopico,
                             key);
 
                         return Task.CompletedTask;
@@ -109,7 +107,7 @@ public class RetriableProducer<T> : IRetriableProducer<T>, IProducer<T>
                     Value = json
                 };
 
-                var result = await _producer.ProduceAsync(_configuration.TopicName, @event, stoppingToken);
+                var result = await _producer.ProduceAsync(_configuration.NomeDoTopico, @event, stoppingToken);
             }, cancellationToken);
         }
         catch (Exception ex)
@@ -117,10 +115,10 @@ public class RetriableProducer<T> : IRetriableProducer<T>, IProducer<T>
             _logger?.LogError(
                 exception: ex,
                 message: "[{Type}][{Method}] All retries has been failed. RetriableConfiguration = {@RetriableConfiguration}; TopicName = {TopicName} Key = {Key};",
-                nameof(RetriableProducer<T>),
-                nameof(ProduceRetriableAsync),
+                nameof(ProdutorResiliente<T>),
+                nameof(ProduzirMensagemComRetentativaAssincrona),
                 retriableConfiguration,
-                _configuration.TopicName,
+                _configuration.NomeDoTopico,
                 key);
         }
     }

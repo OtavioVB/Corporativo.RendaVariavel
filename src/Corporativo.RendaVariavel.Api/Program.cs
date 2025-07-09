@@ -1,3 +1,4 @@
+using Corporativo.RendaVariavel.Infrascructure.BancoDeDados;
 
 namespace Corporativo.RendaVariavel.Api;
 
@@ -11,6 +12,9 @@ public sealed class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
+        builder.Services.RegistrarInjecaoDeDependenciaDoBancoDeDados(
+            configurador: builder.Configuration);
+        
         var app = builder.Build();
 
         app.UseSwagger();

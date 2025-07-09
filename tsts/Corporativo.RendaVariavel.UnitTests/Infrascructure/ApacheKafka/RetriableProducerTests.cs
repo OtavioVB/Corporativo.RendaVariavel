@@ -1,5 +1,5 @@
 ﻿using Confluent.Kafka;
-using Corporativo.RendaVariavel.Infrascructure.ApacheKafka.Producers;
+using Corporativo.RendaVariavel.Infrascructure.Mensageria.Produtores;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -7,7 +7,7 @@ namespace Corporativo.RendaVariavel.UnitTests.Infrascructure.ApacheKafka;
 
 public sealed class RetriableProducerTests
 {
-    private readonly Mock<ILogger<RetriableProducer<RetriableProducerFakeObject>>> _mockLogger = new();
+    private readonly Mock<ILogger<ProdutorResiliente<RetriableProducerFakeObject>>> _mockLogger = new();
     private readonly Mock<IProducer<string, string>> _mockKafkaProducer = new();
 
     public sealed record RetriableProducerFakeObject
@@ -15,8 +15,8 @@ public sealed class RetriableProducerTests
         public string Message { get; set; } = string.Empty;
     }
 
-    private RetriableProducer<RetriableProducerFakeObject> CreateProducer(ProducerConfiguration config)
-        => new RetriableProducer<RetriableProducerFakeObject>(
+    private ProdutorResiliente<RetriableProducerFakeObject> CreateProducer(ProdutorDeMensagemConfiguracao config)
+        => new ProdutorResiliente<RetriableProducerFakeObject>(
             _mockLogger.Object,
             _mockKafkaProducer.Object,
             config);
@@ -25,7 +25,7 @@ public sealed class RetriableProducerTests
     public async Task GivenRequestRetriableProduceAsync_ShouldCallProducerAsExpected()
     {
         // Arrange
-        var config = new ProducerConfiguration { TopicName = "test-topic" };
+        var config = new ProdutorDeMensagemConfiguracao { NomeDoTopico = "test-topic" };
 
         var producer = CreateProducer(config);
         var key = "my-key";
@@ -39,7 +39,7 @@ public sealed class RetriableProducerTests
             .ReturnsAsync(new DeliveryResult<string, string>());
 
         // Act
-        await producer.ProduceAsync(key, message, CancellationToken.None);
+        await producer.ProduzirMensagemAssincrona(key, message, CancellationToken.None);
 
         // Assert
         _mockKafkaProducer.Verify(p =>
@@ -54,17 +54,17 @@ public sealed class RetriableProducerTests
     public async Task GivenRequestRetriableProduceAsyncThrowsAnyError_ShouldCallRetryingProducerUntilMaxAttempts()
     {
         // Arrange
-        var config = new ProducerConfiguration
+        var config = new ProdutorDeMensagemConfiguracao
         {
-            TopicName = "retry-topic",
-            Retriable = new RetriableProducerConfiguration
+            NomeDoTopico = "retry-topic",
+            Retentativa = new RetentativaConfiguracao
             {
-                RetryCount = 3,
-                DelayInMiliseconds = 1
+                NumeroDeRetentativas = 3,
+                IntervaloEmMilisegundos = 1
             },
-            Timeout = new TimeoutProducerConfiguration
+            TempoEsgotado = new TempoEsgotadoConfiguracao
             {
-                Seconds = 5
+                Segundos = 5
             }
         };
 
@@ -79,10 +79,10 @@ public sealed class RetriableProducerTests
             .ThrowsAsync(new Exception("Kafka is down"));
 
         // Act
-        await producer.ProduceRetriableAsync(key, message);
+        await producer.ProduzirMensagemComRetentativaAssincrona(key, message);
 
         // Assert
-        Assert.Equal(config.Retriable.RetryCount + 1, attempts);
+        Assert.Equal(config.Retentativa.NumeroDeRetentativas + 1, attempts);
         _mockLogger.Verify(
             x => x.Log(
                 LogLevel.Warning,
@@ -97,17 +97,17 @@ public sealed class RetriableProducerTests
     public async Task GivenRequestRetriableProductAsyncThrowsAnyError_ShouldCallAllAttemptsAndLogErrorAsExpected()
     {
         // Arrange
-        var config = new ProducerConfiguration
+        var config = new ProdutorDeMensagemConfiguracao
         {
-            TopicName = "retry-topic",
-            Retriable = new RetriableProducerConfiguration
+            NomeDoTopico = "retry-topic",
+            Retentativa = new RetentativaConfiguracao
             {
-                RetryCount = 2,
-                DelayInMiliseconds = 1
+                NumeroDeRetentativas = 2,
+                IntervaloEmMilisegundos = 1
             },
-            Timeout = new TimeoutProducerConfiguration
+            TempoEsgotado = new TempoEsgotadoConfiguracao
             {
-                Seconds = 5
+                Segundos = 5
             }
         };
 
@@ -120,7 +120,7 @@ public sealed class RetriableProducerTests
             .ThrowsAsync(new Exception("Kafka error"));
 
         // Act
-        await producer.ProduceRetriableAsync(key, message);
+        await producer.ProduzirMensagemComRetentativaAssincrona(key, message);
 
         // Assert
         _mockLogger.Verify(
@@ -137,17 +137,17 @@ public sealed class RetriableProducerTests
     public async Task GivenRequestRetriableProduceAsyncTimeExecutionIsGreaterThanTheTimeout_ShouldLogTimeoutError()
     {
         // Arrange
-        var config = new ProducerConfiguration
+        var config = new ProdutorDeMensagemConfiguracao
         {
-            TopicName = "timeout-topic",
-            Retriable = new RetriableProducerConfiguration
+            NomeDoTopico = "timeout-topic",
+            Retentativa = new RetentativaConfiguracao
             {
-                RetryCount = 1,
-                DelayInMiliseconds = 1
+                NumeroDeRetentativas = 1,
+                IntervaloEmMilisegundos = 1
             },
-            Timeout = new TimeoutProducerConfiguration
+            TempoEsgotado = new TempoEsgotadoConfiguracao
             {
-                Seconds = 1
+                Segundos = 1
             }
         };
 
@@ -163,13 +163,13 @@ public sealed class RetriableProducerTests
                 return new DeliveryResult<string, string>();
             });
 
-        var producer = new RetriableProducer<RetriableProducerFakeObject>(_mockLogger.Object, producerMock.Object, config);
+        var producer = new ProdutorResiliente<RetriableProducerFakeObject>(_mockLogger.Object, producerMock.Object, config);
 
         var key = "timeout-key";
         var message = new RetriableProducerFakeObject() { Message = "error-retry-message" };
 
         // Act
-        await producer.ProduceRetriableAsync(key, message, cancellationToken);
+        await producer.ProduzirMensagemComRetentativaAssincrona(key, message, cancellationToken);
 
         // Assert
         _mockLogger.Verify(
