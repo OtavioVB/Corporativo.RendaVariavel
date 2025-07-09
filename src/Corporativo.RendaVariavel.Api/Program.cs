@@ -1,4 +1,5 @@
 using Corporativo.RendaVariavel.Infrascructure.BancoDeDados;
+using Corporativo.RendaVariavel.Infrascructure.Mensageria.Produtores;
 
 namespace Corporativo.RendaVariavel.Api;
 
@@ -13,6 +14,9 @@ public sealed class Program
         builder.Services.AddSwaggerGen();
 
         builder.Services.RegistrarInjecaoDeDependenciaDoBancoDeDados(
+            configurador: builder.Configuration);
+
+        builder.Services.RegistrarInjecaoDeDependenciaDeProducaoDeEventos(
             configurador: builder.Configuration);
         
         var app = builder.Build();

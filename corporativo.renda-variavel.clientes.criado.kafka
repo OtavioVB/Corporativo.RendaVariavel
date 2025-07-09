@@ -1,0 +1,4 @@
+###
+CONSUMER corporativo.renda-variavel-clientes.criado.consumidores
+topic: corporativo.renda-variavel.clientes.criado
+from: earliest

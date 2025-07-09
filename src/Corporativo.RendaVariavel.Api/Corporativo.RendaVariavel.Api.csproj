@@ -20,7 +20,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Corporativo.RendaVariavel.Application\Corporativo.RendaVariavel.Application.csproj" />
     <ProjectReference Include="..\Corporativo.RendaVariavel.Domain\Corporativo.RendaVariavel.Domain.csproj" />
+    <ProjectReference Include="..\Corporativo.RendaVariavel.Infrascructure\Corporativo.RendaVariavel.Infrascructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -7,17 +7,17 @@ using System.Text.Json;
 
 namespace Corporativo.RendaVariavel.Infrascructure.Mensageria.Produtores;
 
-public class ProdutorResiliente<T> : IRetentativaProdutor<T>, IProdutor<T>
+public class ProdutorResiliente<T> : IProdutorResiliente<T>, IProdutor<T>
 {
     protected readonly ILogger<ProdutorResiliente<T>> _logger;
     protected readonly IProducer<string, string> _producer;
     protected readonly ProdutorDeMensagemConfiguracao _configuration;
 
-    public ProdutorResiliente(ILogger<ProdutorResiliente<T>> logger, IProducer<string, string> producer, ProdutorDeMensagemConfiguracao configuration)
+    public ProdutorResiliente(ILogger<ProdutorResiliente<T>> logger, ProdutorDeMensagemConfiguracao configuracao)
     {
         _logger = logger;
-        _producer = producer;
-        _configuration = configuration;
+        _producer = new ProducerBuilder<string, string>(configuracao.Configuracao).Build();
+        _configuration = configuracao;
     }
 
     public async Task ProduzirMensagemAssincrona(string key, T message, CancellationToken cancellationToken = default)
