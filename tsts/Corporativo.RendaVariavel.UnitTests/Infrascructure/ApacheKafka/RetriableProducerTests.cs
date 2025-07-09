@@ -61,6 +61,10 @@ public sealed class RetriableProducerTests
             {
                 RetryCount = 3,
                 DelayInMiliseconds = 1
+            },
+            Timeout = new TimeoutProducerConfiguration
+            {
+                Seconds = 5
             }
         };
 
@@ -90,7 +94,7 @@ public sealed class RetriableProducerTests
     }
 
     [Fact]
-    public async Task ProduceRetriableAsync_Should_Log_Error_After_All_Retries()
+    public async Task GivenRequestRetriableProductAsyncThrowsAnyError_ShouldCallAllAttemptsAndLogErrorAsExpected()
     {
         // Arrange
         var config = new ProducerConfiguration
@@ -100,6 +104,10 @@ public sealed class RetriableProducerTests
             {
                 RetryCount = 2,
                 DelayInMiliseconds = 1
+            },
+            Timeout = new TimeoutProducerConfiguration
+            {
+                Seconds = 5
             }
         };
 
@@ -121,6 +129,55 @@ public sealed class RetriableProducerTests
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("All retries has been failed")),
                 It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenRequestRetriableProduceAsyncTimeExecutionIsGreaterThanTheTimeout_ShouldLogTimeoutError()
+    {
+        // Arrange
+        var config = new ProducerConfiguration
+        {
+            TopicName = "timeout-topic",
+            Retriable = new RetriableProducerConfiguration
+            {
+                RetryCount = 1,
+                DelayInMiliseconds = 1
+            },
+            Timeout = new TimeoutProducerConfiguration
+            {
+                Seconds = 1
+            }
+        };
+
+        var producerMock = new Mock<IProducer<string, string>>();
+
+        var cancellationToken = new CancellationToken();
+
+        producerMock
+            .Setup(p => p.ProduceAsync(It.IsAny<string>(), It.IsAny<Message<string, string>>(), It.IsAny<CancellationToken>()))
+            .Returns(async (string topic, Message<string, string> message, CancellationToken token) =>
+            {
+                await Task.Delay(2000, token);
+                return new DeliveryResult<string, string>();
+            });
+
+        var producer = new RetriableProducer<RetriableProducerFakeObject>(_mockLogger.Object, producerMock.Object, config);
+
+        var key = "timeout-key";
+        var message = new RetriableProducerFakeObject() { Message = "error-retry-message" };
+
+        // Act
+        await producer.ProduceRetriableAsync(key, message, cancellationToken);
+
+        // Assert
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("Timeout")),
+                It.IsAny<Exception?>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }

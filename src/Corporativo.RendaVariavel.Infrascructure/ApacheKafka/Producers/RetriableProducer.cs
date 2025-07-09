@@ -2,7 +2,10 @@
 using Microsoft.Extensions.Logging;
 using Polly;
 using Polly.Retry;
+using Polly.Timeout;
+using System;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Corporativo.RendaVariavel.Infrascructure.ApacheKafka.Producers;
 
@@ -54,9 +57,10 @@ public class RetriableProducer<T> : IRetriableProducer<T>, IProducer<T>
     {
         var retriableConfiguration = _configuration.Retriable;
 
+        var timeoutConfiguration = _configuration.Timeout;
+
         try
         {
-
             AsyncRetryPolicy retryPolicy = Policy
                 .Handle<Exception>()
                 .WaitAndRetryAsync(
@@ -76,7 +80,26 @@ public class RetriableProducer<T> : IRetriableProducer<T>, IProducer<T>
                             key);
                     });
 
-            await retryPolicy.ExecuteAsync(async () =>
+            AsyncTimeoutPolicy timeoutPolicy =
+                Policy.TimeoutAsync(
+                    seconds: timeoutConfiguration.Seconds,
+                    timeoutStrategy: TimeoutStrategy.Optimistic,
+                    onTimeoutAsync: (context, timespan, task, ex) =>
+                    {
+                        _logger?.LogError(
+                            "[{Type}][{Method}] Timeout after {Timeout}ms. Topic = {Topic}; Key = {Key}",
+                            nameof(RetriableProducer<T>),
+                            nameof(ProduceRetriableAsync),
+                            timespan.TotalMilliseconds,
+                            _configuration.TopicName,
+                            key);
+
+                        return Task.CompletedTask;
+                    });
+
+            var wrapPolicy = Policy.WrapAsync(timeoutPolicy, retryPolicy);
+
+            await wrapPolicy.ExecuteAsync(async (stoppingToken) =>
             {
                 var json = JsonSerializer.Serialize(message);
 
@@ -86,8 +109,8 @@ public class RetriableProducer<T> : IRetriableProducer<T>, IProducer<T>
                     Value = json
                 };
 
-                var result = await _producer.ProduceAsync(_configuration.TopicName, @event, cancellationToken);
-            });
+                var result = await _producer.ProduceAsync(_configuration.TopicName, @event, stoppingToken);
+            }, cancellationToken);
         }
         catch (Exception ex)
         {

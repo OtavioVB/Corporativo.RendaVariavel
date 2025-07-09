@@ -6,7 +6,13 @@ public sealed record ProducerConfiguration
 {
     public ProducerConfig ProducerConfig { get; set; } = new ProducerConfig();
     public RetriableProducerConfiguration Retriable { get; set; } = new RetriableProducerConfiguration();
+    public TimeoutProducerConfiguration Timeout { get; set; } = new TimeoutProducerConfiguration();
     public string TopicName { get; set; } = string.Empty;
+}
+
+public sealed record TimeoutProducerConfiguration
+{
+    public int Seconds { get; set; } = 0;
 }
 
 public sealed record RetriableProducerConfiguration
